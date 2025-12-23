@@ -1,0 +1,570 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "metacorp API",
+    "description": "metacorp Api documentation"
+  },
+  "servers": [
+    {
+      "url": "https://metacorp.onrender.com",
+      "description": "Render server"
+    },
+    {
+      "url": "http://localhost:3001",
+      "description": "localhost"
+    }
+  ],
+  "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Auth routes"
+        ],
+        "description": "",
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/loginSchema"
+              },
+              "examples": {
+                "loginExample": {
+                  "$ref": "#/components/examples/loginSchema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth routes"
+        ],
+        "description": "",
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/products/{id}": {
+      "get": {
+        "tags": [
+          "Items routes"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/q"
+          },
+          {
+            "$ref": "#/components/parameters/sort"
+          },
+          {
+            "$ref": "#/components/parameters/filter"
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "access_token": []
+          }
+        ]
+      }
+    },
+    "/api/v1/products/": {
+      "get": {
+        "tags": [
+          "Items routes"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "$ref": "#/components/parameters/q"
+          },
+          {
+            "$ref": "#/components/parameters/sort"
+          },
+          {
+            "$ref": "#/components/parameters/filter"
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "access_token": []
+          }
+        ]
+      }
+    },
+    "/api/v1/products/most-saled/{id}": {
+      "get": {
+        "tags": [
+          "Items routes"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "access_token": []
+          }
+        ]
+      }
+    },
+    "/api/v1/products/most-saled/": {
+      "get": {
+        "tags": [
+          "Items routes"
+        ],
+        "description": "",
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "access_token": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sales/": {
+      "get": {
+        "tags": [
+          "Sales routes"
+        ],
+        "description": "",
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "access_token": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Sales routes"
+        ],
+        "description": "",
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "access_token": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/salesSchema"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales/returns": {
+      "get": {
+        "tags": [
+          "Sales routes"
+        ],
+        "description": "",
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "access_token": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sales/return-items": {
+      "post": {
+        "tags": [
+          "Sales routes"
+        ],
+        "description": "",
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "access_token": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/salesReturnSchema"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sales/returns/{id}": {
+      "get": {
+        "tags": [
+          "Sales routes"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "access_token": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sales/{salesId}": {
+      "get": {
+        "tags": [
+          "Sales routes"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "salesId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "access_token": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Sales routes"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "salesId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "access_token": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Sales routes"
+        ],
+        "description": "",
+        "parameters": [
+          {
+            "name": "salesId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "access_token": []
+          }
+        ]
+      }
+    },
+    "/api/v1/analytics/sales": {
+      "get": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/saleData": {
+      "get": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/v1/home/store": {
+      "get": {
+        "description": "",
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "salesSchema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "PKItemID": {
+                  "type": "string",
+                  "example": "number"
+                },
+                "Qty": {
+                  "type": "string",
+                  "example": "number"
+                },
+                "Price": {
+                  "type": "string",
+                  "example": "number"
+                }
+              }
+            }
+          },
+          "totalAmount": {
+            "type": "string",
+            "example": "number"
+          },
+          "discount": {
+            "type": "string",
+            "example": "number"
+          }
+        }
+      },
+      "salesReturnSchema": {
+        "type": "object",
+        "properties": {
+          "sales": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "saleId": {
+                  "type": "string",
+                  "example": "number"
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "PKItemID": {
+                        "type": "string",
+                        "example": "number"
+                      },
+                      "PKSoldItemID": {
+                        "type": "string",
+                        "example": "number"
+                      },
+                      "returnQty": {
+                        "type": "string",
+                        "example": "number"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "nonSales": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "retuurnQty": {
+                  "type": "string",
+                  "example": "number"
+                },
+                "item": {
+                  "type": "object",
+                  "properties": {
+                    "PKItemID": {
+                      "type": "string",
+                      "example": "number"
+                    },
+                    "Price": {
+                      "type": "string",
+                      "example": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "loginSchema": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "string"
+          },
+          "password": {
+            "type": "string",
+            "example": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      }
+    },
+    "parameters": {
+      "q": {
+        "name": "q",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "example": "apple"
+        },
+        "description": "Search query for filtering products"
+      },
+      "id": {
+        "name": "id",
+        "in": "query",
+        "schema": {
+          "type": "number",
+          "example": "13"
+        },
+        "description": "Product ID"
+      },
+      "sort": {
+        "name": "sort",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "example": "date"
+        },
+        "description": "Sort order for products"
+      },
+      "filter": {
+        "name": "filter",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "example": "rol"
+        },
+        "description": "Filter criteria for products"
+      }
+    },
+    "examples": {
+      "loginSchema": {
+        "value": {
+          "email": "mail@example.com",
+          "password": "password"
+        },
+        "summary": "Example of login schema"
+      }
+    },
+    "securitySchemes": {
+      "access_token": {
+        "type": "apiKey",
+        "name": "access_token",
+        "in": "header",
+        "description": "Access token required for authentication"
+      }
+    }
+  }
+}
