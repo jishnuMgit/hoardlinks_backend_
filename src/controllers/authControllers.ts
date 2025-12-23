@@ -79,7 +79,7 @@ export const login = async (
     // ------------------------------
     // 🔄 UPDATE DEVICE TYPE ONLY
     // ------------------------------
-    await prisma.user_account.update({
+   const upadteuser= await prisma.user_account.update({
       where: { id: user.id },
       data: {
         deviceType: device_type || deviceType,
@@ -120,8 +120,8 @@ export const login = async (
       success: true,
       message: "Login successful.",
       access_token: token,
-      role_type: user.role_type,
-      user: convertBigInt(user),
+      role_type: upadteuser.role_type,
+      user: convertBigInt(upadteuser),
     });
   } catch (error) {
     console.error("Login Error:", error);

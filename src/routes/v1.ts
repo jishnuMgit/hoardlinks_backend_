@@ -7,6 +7,8 @@ import meetingRoutes from './meetingRoutes.js'
 import announcement from './announcementRoutes.js'
 import profileRoutes from './profileRoutes.js'
 import tokenRoutess from './tokenRoutes.js'
+import chittyRoutes from './chittyRoute.js'
+
 const router = express.Router()
 
 // API /api/v1
@@ -43,6 +45,9 @@ router
     announcement
   ).use('/profile',profileRoutes
 
-  ).use('/token',tokenRoutess)
+  ).use('/token',tokenRoutess
+
+  ).use('/chitty',chittyRoutes
+  )
   
 export default router
