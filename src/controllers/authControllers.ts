@@ -16,21 +16,26 @@ export const login = async (
   next: NextFunction
 ) => {
   try {
-    const {
-      login_id,
-      password,
-      device_type
-    } = req.body;
+    const { login_id, password, device_type ,device_id} = req.body;
 
 
-    if(!device_type){      return res.status(400).json({
+    if (!device_type) {
+      return res.status(400).json({
         success: false,
         message: "device_type is required.",
       });
-      }
+    }
     // ------------------------------
     // 🔹 BASIC VALIDATION
     // ------------------------------
+
+
+    if(!device_id)  {
+      return res.status(400).json({
+        success: false,
+        message: "device_id is required.",
+      });
+    }
     if (!login_id || !password) {
       return res.status(400).json({
         success: false,
@@ -78,6 +83,7 @@ export const login = async (
       where: { id: user.id },
       data: {
         deviceType: device_type || deviceType,
+        device_id: device_id,
       },
     });
 
@@ -130,7 +136,6 @@ const convertBigInt = (obj: any) =>
     )
   );
 
-
 export const Register = async (
   req: Request,
   res: Response,
@@ -146,6 +151,7 @@ export const Register = async (
       district_id,
       agency_id,
       fcm_token,
+      device_id,
       device_type: bodyDeviceType, // may or may not come
     } = req.body;
 
@@ -263,8 +269,7 @@ export const Register = async (
     const userAgent = req.headers["user-agent"];
 
     const deviceType =
-      bodyDeviceType ??
-      (fcm_token ? getDeviceType(userAgent) : null);
+      bodyDeviceType ?? (fcm_token ? getDeviceType(userAgent) : null);
 
     // ------------------------------
     // 🔹 NORMALIZE ROLE-BASED IDS
@@ -286,7 +291,7 @@ export const Register = async (
         password_hash,
         mobile_number,
         role_type,
-
+        device_id: device_id ?? null,
         state_id: stateId,
         district_id: districtId,
         agency_id: agencyId,
@@ -300,18 +305,17 @@ export const Register = async (
 
     // 1️⃣ Create user
 
-// 2️⃣ Create Firebase key
-const firebaseUserKey = await createFirebaseUserKey(
-  newUser.id.toString(),
-  newUser.login_id
-);
+    // 2️⃣ Create Firebase key
+    const firebaseUserKey = await createFirebaseUserKey(
+      newUser.id.toString(),
+      newUser.login_id
+    );
 
-// 3️⃣ Save Firebase key
-await prisma.user_account.update({
-  where: { id: newUser.id },
-  data: { firebaseUserKey },
-});
-
+    // 3️⃣ Save Firebase key
+    await prisma.user_account.update({
+      where: { id: newUser.id },
+      data: { firebaseUserKey },
+    });
 
     // ------------------------------
     // 🔔 SEND WELCOME PUSH
@@ -342,8 +346,6 @@ await prisma.user_account.update({
     });
   }
 };
-
-
 
 export const logout = async (
   req: Request,
