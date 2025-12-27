@@ -234,7 +234,7 @@ export const joinChitty = async (
       { length: totalReq },
       (_, index) => ({
         chitty_id: BigInt(chitty_id),
-        agency_id: BigInt(userAcc.agency_id),
+        agency_id: Number(userAcc.agency_id),
         member_no: startMemberNo + index,
         join_status: chitty_member_join_status.REQUESTED,
         remarks: remarks ?? null,
