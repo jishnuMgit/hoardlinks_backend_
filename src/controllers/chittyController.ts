@@ -10,32 +10,98 @@ export const getChitty = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const Openchittys = await prisma.chitty_scheme.findMany({
-      where: {status: "OPEN"},
+    const user = req.user;
+
+    // -----------------------------
+    // 🔹 Auth check
+    // -----------------------------
+    if (!user?.id) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    // -----------------------------
+    // 🔹 Get logged-in user
+    // -----------------------------
+    const currentUser = await prisma.user_account.findUnique({
+      where: { id: BigInt(user.id) },
+      select: {
+        id: true,
+        role_type: true,
+        state_id: true,
+        district_id: true,
+      },
     });
 
-    const RunningChicktys = await prisma.chitty_scheme.findMany({
-      where: {status: "RUNNING"},
-    });
+    if (!currentUser) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
 
-    
-    const ClosedChicktys = await prisma.chitty_scheme.findMany({
-      where: {status: "CLOSED"},
-    });
+    // -----------------------------
+    // 🔹 Build dynamic filter
+    // -----------------------------
+    let whereCondition: any = {};
 
+    if (currentUser.role_type === "AGENCY") {
+      // AGENCY → All STATE level chitty
+      whereCondition = {
+        level: "STATE",
+      };
+    }
+
+    else if (currentUser.role_type === "STATE") {
+      // STATE → All DISTRICT + own STATE
+      whereCondition = {
+        OR: [
+          { level: "DISTRICT" },
+          {
+            level: "STATE",
+            state_id: currentUser.state_id,
+          },
+        ],
+      };
+    }
+
+    else if (currentUser.role_type === "DISTRICT") {
+      // DISTRICT → Only own DISTRICT
+      whereCondition = {
+        level: "DISTRICT",
+        district_id: currentUser.district_id,
+      };
+    }
+
+    // -----------------------------
+    // 🔹 Fetch chitty by status
+    // -----------------------------
+    const [open, running, closed] = await Promise.all([
+      prisma.chitty_scheme.findMany({
+        where: { status: "OPEN", ...whereCondition },
+      }),
+      prisma.chitty_scheme.findMany({
+        where: { status: "RUNNING", ...whereCondition },
+      }),
+      prisma.chitty_scheme.findMany({
+        where: { status: "CLOSED", ...whereCondition },
+      }),
+    ]);
+
+    // -----------------------------
+    // 🔹 Response
+    // -----------------------------
     res.status(200).json({
-      message: "Chittys fetched successfully",
-
-      open: serialize(Openchittys),
-      running: serialize(RunningChicktys),
-      closed: serialize(ClosedChicktys),
-
+      message: "Chitty schemes fetched successfully",
+      open: serialize(open),
+      running: serialize(running),
+      closed: serialize(closed),
     });
+
   } catch (error) {
-    console.error("Error fetching profile:", error);
+    console.error("Error fetching chitty schemes:", error);
     next(error);
   }
 };
+
 
 export const getChittyByid = async (
   req: Request,
@@ -263,3 +329,85 @@ export const joinChitty = async (
   }
 };
 
+
+
+export const ChittyAuctionBid = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const user = req.user;
+
+    // -----------------------------
+    // 🔹 Auth check
+    // -----------------------------
+    if (!user?.id) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const { auction_id, chitty_id, month_index, bid_amount } = req.body;
+
+    // -----------------------------
+    // 🔹 Validation
+    // -----------------------------
+    if (!auction_id || !chitty_id || !month_index || !bid_amount) {
+      res.status(400).json({
+        success: false,
+        message: "auction_id, chitty_id, month_index and bid_amount are required",
+      });
+      return;
+    }
+
+    if (Number(bid_amount) <= 0) {
+      res.status(400).json({
+        success: false,
+        message: "Bid amount must be greater than zero",
+      });
+      return;
+    }
+
+    // -----------------------------
+    // 🔹 Check existing winning bid
+    // -----------------------------
+    // const existingWinningBid = await prisma.chitty_auction_bid.findFirst({
+    //   where: {
+    //     auction_id: BigInt(auction_id),
+    //     month_index,
+    //     is_winning_bid: true,
+    //   },
+    // });
+
+    // if (existingWinningBid) {
+    //   res.status(400).json({
+    //     success: false,
+    //     message: "Winning bid already exists for this auction month",
+    //   });
+    //   return;
+    // }
+
+    // -----------------------------
+    // 🔹 Create Bid
+    // -----------------------------
+    const bid = await prisma.chitty_auction_bid.create({
+      data: {
+        auction_id: BigInt(auction_id),
+        chitty_id,
+        month_index,
+        member_id: BigInt(user.id),
+        bid_amount,
+        is_winning_bid: false,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Bid placed successfully",
+      data: bid,
+    });
+  } catch (error) {
+    console.error("Error creating chitty auction bid:", error);
+    next(error);
+  }
+};
