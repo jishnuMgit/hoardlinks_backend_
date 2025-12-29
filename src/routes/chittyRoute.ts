@@ -3,6 +3,7 @@ import { verifyToken } from "##/middlewares/verifyToken.js";
 import {
   ChittyAuctionBid,
   getChitty,
+  GetChittyAuctionBids,
   getChittyByid,
   joinChitty,
 } from "##/controllers/chittyController.js";
@@ -13,4 +14,5 @@ router.route("/getAllChitty").get(verifyToken, getChitty);
 router.route("/getChitty/:id").get(verifyToken, getChittyByid);
 router.route("/createChitty").post(verifyToken, joinChitty);
 router.route("/chitty_auction_bid").post(verifyToken, ChittyAuctionBid);
+router.route("/get/chitty_bids/:id").get(verifyToken, GetChittyAuctionBids);
 export default router;

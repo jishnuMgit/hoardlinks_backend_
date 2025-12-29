@@ -127,13 +127,11 @@ export const getChitty = async (
       running: serialize(running),
       closed: serialize(closed),
     });
-
   } catch (error) {
     console.error("Error fetching chitty schemes:", error);
     next(error);
   }
 };
-
 
 export const getChittyByid = async (
   req: Request,
@@ -144,8 +142,7 @@ export const getChittyByid = async (
     const user = req.user;
     const { id } = req.params;
 
-    console.log('user',user);
-    
+    console.log("user", user);
 
     if (!user?.id) {
       res.status(401).json({ message: "Unauthorized" });
@@ -161,7 +158,7 @@ export const getChittyByid = async (
         id: true,
         district_id: true,
         state_id: true,
-        agency_id : true,
+        agency_id: true,
       },
     });
 
@@ -229,14 +226,11 @@ export const getChittyByid = async (
       chitty: serialize(chitty),
       chittyCycle: serialize(chittyCycle),
     });
-
   } catch (error) {
     console.error("Error fetching chitty:", error);
     next(error);
   }
 };
-
-
 
 export const joinChitty = async (
   req: Request,
@@ -270,13 +264,8 @@ export const joinChitty = async (
       return;
     }
 
-    const {
-      chitty_id,
-      remarks,
-      number_of_req,
-      join_date,
-      exit_date,
-    } = req.body;
+    const { chitty_id, remarks, number_of_req, join_date, exit_date } =
+      req.body;
 
     const totalReq = Number(number_of_req);
 
@@ -328,18 +317,15 @@ export const joinChitty = async (
     // -----------------------------
     // 🔹 Prepare bulk data
     // -----------------------------
-    const membersData = Array.from(
-      { length: totalReq },
-      (_, index) => ({
-        chitty_id: BigInt(chitty_id),
-        agency_id: Number(userAcc.agency_id),
-        member_no: startMemberNo + index,
-        join_status: chitty_member_join_status.REQUESTED,
-        remarks: remarks ?? null,
-        join_date: joinDateParsed,
-        exit_date: exitDateParsed,
-      })
-    );
+    const membersData = Array.from({ length: totalReq }, (_, index) => ({
+      chitty_id: BigInt(chitty_id),
+      agency_id: Number(userAcc.agency_id),
+      member_no: startMemberNo + index,
+      join_status: chitty_member_join_status.REQUESTED,
+      remarks: remarks ?? null,
+      join_date: joinDateParsed,
+      exit_date: exitDateParsed,
+    }));
 
     // -----------------------------
     // 🔹 Insert
@@ -361,8 +347,6 @@ export const joinChitty = async (
   }
 };
 
-
-
 export const ChittyAuctionBid = async (
   req: Request,
   res: Response,
@@ -379,15 +363,23 @@ export const ChittyAuctionBid = async (
       return;
     }
 
-    const { auction_id, chitty_id, month_index, bid_amount } = req.body;
+    const { auction_id, chitty_id, month_index, bid_amount, member_no } =
+      req.body;
 
     // -----------------------------
     // 🔹 Validation
     // -----------------------------
-    if (!auction_id || !chitty_id || !month_index || !bid_amount) {
+    if (
+      !auction_id ||
+      !chitty_id ||
+      !month_index ||
+      !bid_amount ||
+      !member_no
+    ) {
       res.status(400).json({
         success: false,
-        message: "auction_id, chitty_id, month_index and bid_amount are required",
+        message:
+          "auction_id, chitty_id, month_index, bid_amount and member_no are required",
       });
       return;
     }
@@ -427,7 +419,7 @@ export const ChittyAuctionBid = async (
         auction_id: BigInt(auction_id),
         chitty_id,
         month_index,
-        member_id: BigInt(user.id),
+        member_id: BigInt(member_no),
         bid_amount,
         is_winning_bid: false,
       },
@@ -440,6 +432,82 @@ export const ChittyAuctionBid = async (
     });
   } catch (error) {
     console.error("Error creating chitty auction bid:", error);
+    next(error);
+  }
+};
+
+export const GetChittyAuctionBids = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const user = req.user;
+
+    // -----------------------------
+    // 🔹 Auth check
+    // -----------------------------
+    if (!user?.id) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const { id } = req.params; // chitty_id
+
+    if (!id) {
+      res.status(400).json({
+        success: false,
+        message: "chitty_id is required",
+      });
+      return;
+    }
+
+    // -----------------------------
+    // 🔹 Step 1: Get highest bid amount
+    // -----------------------------
+    const maxBid = await prisma.chitty_auction_bid.aggregate({
+      where: {
+        chitty_id: Number(id),
+      },
+      _max: {
+        bid_amount: true,
+      },
+    });
+
+    if (!maxBid._max.bid_amount) {
+      res.status(200).json({
+        success: true,
+        message: "No bids found",
+        highest_bid_amount: null,
+        highest_bids: [],
+      });
+      return;
+    }
+
+    // -----------------------------
+    // 🔹 Step 2: Get all bids with highest amount
+    // -----------------------------
+    const highestBids = await prisma.chitty_auction_bid.findMany({
+      where: {
+        chitty_id: Number(id),
+        bid_amount: maxBid._max.bid_amount,
+      },
+      orderBy: {
+        bid_time: "asc", // optional: earliest bid first
+      },
+    });
+
+    // -----------------------------
+    // 🔹 Response
+    // -----------------------------
+    res.status(200).json({
+      success: true,
+      message: "Highest bid(s) fetched successfully",
+      highest_bid_amount: maxBid._max.bid_amount,
+      highest_bids: highestBids,
+    });
+  } catch (error) {
+    console.error("Error fetching highest bids:", error);
     next(error);
   }
 };
