@@ -16,8 +16,7 @@ export const login = async (
   next: NextFunction
 ) => {
   try {
-    const { login_id, password, device_type ,device_id} = req.body;
-
+    const { login_id, password, device_type, device_id } = req.body;
 
     if (!device_type) {
       return res.status(400).json({
@@ -29,12 +28,13 @@ export const login = async (
     // 🔹 BASIC VALIDATION
     // ------------------------------
 
-
-    if(!device_id)  {
-      return res.status(400).json({
-        success: false,
-        message: "device_id is required.",
-      });
+    if (device_type !== "WEB") {
+      if (!device_id) {
+        return res.status(400).json({
+          success: false,
+          message: "device_id is required.",
+        });
+      }
     }
     if (!login_id || !password) {
       return res.status(400).json({
@@ -79,11 +79,11 @@ export const login = async (
     // ------------------------------
     // 🔄 UPDATE DEVICE TYPE ONLY
     // ------------------------------
-   const upadteuser= await prisma.user_account.update({
+    const upadteuser = await prisma.user_account.update({
       where: { id: user.id },
       data: {
         deviceType: device_type || deviceType,
-        device_id: device_id,
+        device_id: device_id || "",
       },
     });
 
