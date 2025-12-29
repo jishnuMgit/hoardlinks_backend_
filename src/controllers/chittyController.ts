@@ -21,7 +21,7 @@ export const getChitty = async (
     }
 
     // -----------------------------
-    // 🔹 Get logged-in user
+    // 🔹 Fetch logged-in user
     // -----------------------------
     const currentUser = await prisma.user_account.findUnique({
       where: { id: BigInt(user.id) },
@@ -30,6 +30,7 @@ export const getChitty = async (
         role_type: true,
         state_id: true,
         district_id: true,
+        agency_id: true,
       },
     });
 
@@ -38,23 +39,52 @@ export const getChitty = async (
       return;
     }
 
-    // -----------------------------
-    // 🔹 Build dynamic filter
-    // -----------------------------
     let whereCondition: any = {};
 
+    // =====================================================
+    // 🟢 AGENCY LOGIC
+    // =====================================================
     if (currentUser.role_type === "AGENCY") {
-      // AGENCY → All STATE level chitty
+      if (!currentUser.agency_id) {
+        res.status(400).json({ message: "Agency not linked to user" });
+        return;
+      }
+
+      // Fetch agency to get district_id
+      const agency = await prisma.agency_member.findUnique({
+        where: { id: currentUser.agency_id },
+        select: { district_id: true },
+      });
+
+      if (!agency) {
+        res.status(404).json({ message: "Agency not found" });
+        return;
+      }
+
       whereCondition = {
-        level: "STATE",
+        OR: [
+          // All STATE level chitty
+          { level: "STATE" },
+
+          // DISTRICT level chitty only for agency district
+          {
+            level: "DISTRICT",
+            district_id: agency.district_id,
+          },
+        ],
       };
     }
 
+    // =====================================================
+    // 🟢 STATE LOGIC
+    // =====================================================
     else if (currentUser.role_type === "STATE") {
-      // STATE → All DISTRICT + own STATE
       whereCondition = {
         OR: [
+          // All DISTRICT level
           { level: "DISTRICT" },
+
+          // STATE level only for same state
           {
             level: "STATE",
             state_id: currentUser.state_id,
@@ -63,8 +93,10 @@ export const getChitty = async (
       };
     }
 
+    // =====================================================
+    // 🟢 DISTRICT LOGIC
+    // =====================================================
     else if (currentUser.role_type === "DISTRICT") {
-      // DISTRICT → Only own DISTRICT
       whereCondition = {
         level: "DISTRICT",
         district_id: currentUser.district_id,
@@ -72,7 +104,7 @@ export const getChitty = async (
     }
 
     // -----------------------------
-    // 🔹 Fetch chitty by status
+    // 🔹 Fetch chitty schemes by status
     // -----------------------------
     const [open, running, closed] = await Promise.all([
       prisma.chitty_scheme.findMany({
