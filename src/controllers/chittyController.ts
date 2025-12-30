@@ -107,16 +107,46 @@ export const getChitty = async (
     // 🔹 Fetch chitty schemes by status
     // -----------------------------
     const [open, running, closed] = await Promise.all([
-      prisma.chitty_scheme.findMany({
-        where: { status: "OPEN", ...whereCondition },
-      }),
-      prisma.chitty_scheme.findMany({
-        where: { status: "RUNNING", ...whereCondition },
-      }),
-      prisma.chitty_scheme.findMany({
-        where: { status: "CLOSED", ...whereCondition },
-      }),
-    ]);
+  prisma.chitty_scheme.findMany({
+    where: { status: "OPEN", ...whereCondition },
+    include: {
+      _count: {
+        select: {
+          chitty_member: {
+            where: { join_status: "APPROVED" },
+          },
+        },
+      },
+    },
+  }),
+
+  prisma.chitty_scheme.findMany({
+    where: { status: "RUNNING", ...whereCondition },
+    include: {
+      _count: {
+        select: {
+          chitty_member: {
+            where: { join_status: "APPROVED" },
+          },
+        },
+      },
+    },
+  }),
+
+  prisma.chitty_scheme.findMany({
+    where: { status: "CLOSED", ...whereCondition },
+    include: {
+      _count: {
+        select: {
+          chitty_member: {
+            where: { join_status: "APPROVED" },
+          },
+        },
+      },
+    },
+  }),
+]);
+
 
     // -----------------------------
     // 🔹 Response
@@ -320,7 +350,7 @@ export const joinChitty = async (
     const membersData = Array.from({ length: totalReq }, (_, index) => ({
       chitty_id: BigInt(chitty_id),
       agency_id: Number(userAcc.agency_id),
-      member_no: startMemberNo + index,
+      member_no: 0,
       join_status: chitty_member_join_status.REQUESTED,
       remarks: remarks ?? null,
       join_date: joinDateParsed,
