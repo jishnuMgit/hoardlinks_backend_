@@ -16,26 +16,31 @@ export const login = async (
   next: NextFunction
 ) => {
   try {
-    const { login_id, password, device_type, device_id } = req.body;
+    const {
+      login_id,
+      password,
+      device_type,
+      device_id,
+      FCM_token, // 🔥 ADD THIS
+    } = req.body;
 
+    // ------------------------------
+    // 🔹 BASIC VALIDATION
+    // ------------------------------
     if (!device_type) {
       return res.status(400).json({
         success: false,
         message: "device_type is required.",
       });
     }
-    // ------------------------------
-    // 🔹 BASIC VALIDATION
-    // ------------------------------
 
-    if (device_type !== "WEB") {
-      if (!device_id) {
-        return res.status(400).json({
-          success: false,
-          message: "device_id is required.",
-        });
-      }
+    if (device_type !== "WEB" && !device_id) {
+      return res.status(400).json({
+        success: false,
+        message: "device_id is required for non-WEB devices.",
+      });
     }
+
     if (!login_id || !password) {
       return res.status(400).json({
         success: false,
@@ -58,10 +63,9 @@ export const login = async (
     }
 
     // ------------------------------
-    // 🔐 COMPARE PASSWORD
+    // 🔐 PASSWORD CHECK
     // ------------------------------
     const isMatch = await bcrypt.compare(password, user.password_hash);
-
     if (!isMatch) {
       return res.status(400).json({
         success: false,
@@ -70,20 +74,33 @@ export const login = async (
     }
 
     // ------------------------------
-    // 🔔 DEVICE TYPE DECISION
+    // 🔔 DEVICE TYPE DETECTION
     // ------------------------------
     const userAgent = req.headers["user-agent"];
-
-    const deviceType = getDeviceType(userAgent);
+    const detectedDeviceType = getDeviceType(userAgent);
 
     // ------------------------------
-    // 🔄 UPDATE DEVICE TYPE ONLY
+    // 🔑 ENSURE FIREBASE USER EXISTS
     // ------------------------------
-    const upadteuser = await prisma.user_account.update({
+    let firebaseUserKey = user.firebaseUserKey;
+
+    if (!firebaseUserKey) {
+      firebaseUserKey = await createFirebaseUserKey(
+        user.id.toString(),
+        user.login_id
+      );
+    }
+
+    // ------------------------------
+    // 🔄 UPDATE USER (INCLUDING FCM TOKEN)
+    // ------------------------------
+    const updatedUser = await prisma.user_account.update({
       where: { id: user.id },
       data: {
-        deviceType: device_type || deviceType,
-        device_id: device_id || "",
+        deviceType: device_type || detectedDeviceType,
+        device_id: device_id ?? user.device_id,
+        firebaseUserKey,
+        FCM_token: FCM_token ?? user.FCM_token, // 🔔 IMPORTANT
       },
     });
 
@@ -95,8 +112,8 @@ export const login = async (
     }
 
     const tokenPayload = {
-      id: user.id.toString(),
-      role_type: user.role_type,
+      id: updatedUser.id.toString(),
+      role_type: updatedUser.role_type,
     };
 
     const token = jwt.sign(tokenPayload, JWT_SECRET, {
@@ -108,7 +125,7 @@ export const login = async (
     // ------------------------------
     res.cookie("access_token", token, {
       httpOnly: true,
-      secure: false, // true in production (HTTPS)
+      secure: false, // true in production
       sameSite: "lax",
       maxAge: 24 * 60 * 60 * 1000,
     });
@@ -120,14 +137,16 @@ export const login = async (
       success: true,
       message: "Login successful.",
       access_token: token,
-      role_type: upadteuser.role_type,
-      user: convertBigInt(upadteuser),
+      role_type: updatedUser.role_type,
+      user: convertBigInt(updatedUser),
     });
   } catch (error) {
     console.error("Login Error:", error);
     next(error);
   }
 };
+
+
 
 const convertBigInt = (obj: any) =>
   JSON.parse(
