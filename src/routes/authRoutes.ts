@@ -1,5 +1,5 @@
 import express from 'express'
-import { login, logout, Register } from '#controllers/authControllers.js'
+import { CreateUserRaw, login, logout, Register } from '#controllers/authControllers.js'
 import { verifyToken } from '##/middlewares/verifyToken.js'
 
 const router = express.Router()
@@ -23,5 +23,6 @@ router.route('/login').post(
 )
 router.route('/logout').post( logout)
 router.route('/register').post(verifyToken, Register)
+router.route('/create/user').post( CreateUserRaw)
 
 export default router

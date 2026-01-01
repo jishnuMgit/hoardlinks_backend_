@@ -376,3 +376,100 @@ export const logout = async (
     next(error);
   }
 };
+
+
+export const CreateUserRaw = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const {
+      login_id,
+      password,
+      mobile_number,
+      role_type,
+      state_id,
+      district_id,
+      agency_id,
+      fcm_token,
+      device_id,
+      device_type,
+    } = req.body;
+
+    // ------------------------------
+    // 🔹 BASIC REQUIRED CHECK
+    // ------------------------------
+    if (!login_id || !password || !mobile_number || !role_type) {
+      return res.status(400).json({
+        success: false,
+        message: "login_id, password, mobile_number, role_type are required",
+      });
+    }
+
+    // ------------------------------
+    // 🔹 DUPLICATE CHECK
+    // ------------------------------
+    const exists = await prisma.user_account.findFirst({
+      where: {
+        OR: [{ login_id }, { mobile_number }],
+      },
+    });
+
+    if (exists) {
+      return res.status(400).json({
+        success: false,
+        message: "Login ID or mobile number already exists",
+      });
+    }
+
+    // ------------------------------
+    // 🔐 HASH PASSWORD
+    // ------------------------------
+    const password_hash = await bcrypt.hash(password, 10);
+
+    // ------------------------------
+    // ✅ INSERT EVERYTHING AS-IS
+    // ------------------------------
+const user = await prisma.user_account.create({
+  data: {
+    login_id,
+    password_hash,
+    mobile_number,
+    role_type,
+    device_id: device_id ?? "",
+    deviceType: device_type ?? "",
+    FCM_token: fcm_token ?? "",
+    firebaseUserKey: "",
+    state_id: state_id ? Number(state_id) : null,
+    district_id: district_id ? Number(district_id) : null,
+    agency_id: agency_id ? Number(agency_id) : null,
+  },
+});
+
+    // ------------------------------
+    // 🔑 FIREBASE KEY
+    // ------------------------------
+    const firebaseUserKey = await createFirebaseUserKey(
+      user.id.toString(),
+      user.login_id
+    );
+
+    await prisma.user_account.update({
+      where: { id: user.id },
+      data: { firebaseUserKey },
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "User created successfully (raw insert)",
+      data: convertBigInt(user),
+    });
+  } catch (error) {
+    console.error("CreateUserRaw Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
