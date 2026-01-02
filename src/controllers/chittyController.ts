@@ -587,3 +587,52 @@ export const GetChittyAuctionBids = async (
     next(error);
   }
 };
+
+
+
+export const GetAuctionBidId = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { chitty_id, cycle_id } = req.params;
+    const user = req.user;
+
+    // 🔹 Auth check
+    if (!user?.id) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    // 🔹 Validation
+    if (!chitty_id || !cycle_id) {
+      res.status(400).json({
+        message: "chitty_id and cycle_id are required",
+      });
+      return;
+    }
+
+    const bid = await prisma.chitty_auction.findMany({
+      where: {
+        chitty_id: Number(chitty_id),
+        cycle_id: Number(cycle_id),
+      },
+    });
+
+    if (bid.length === 0) {
+      res.status(404).json({ message: "No auction found" });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Auction fetched successfully",
+      data: bid,
+    });
+
+  } catch (error) {
+    console.error("Error fetching auction:", error);
+    next(error);
+  }
+};
