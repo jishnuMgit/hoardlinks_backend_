@@ -186,6 +186,9 @@ export const getChittyByid = async (
     const user = req.user;
     const { id } = req.params;
 
+    // -----------------------------
+    // 🔹 AUTH CHECK
+    // -----------------------------
     if (!user?.id) {
       res.status(401).json({ message: "Unauthorized" });
       return;
@@ -193,6 +196,9 @@ export const getChittyByid = async (
 
     const userId = BigInt(user.id);
 
+    // -----------------------------
+    // 🔹 FETCH USER ACCOUNT
+    // -----------------------------
     const userAcc = await prisma.user_account.findUnique({
       where: { id: userId },
       select: {
@@ -208,6 +214,9 @@ export const getChittyByid = async (
       return;
     }
 
+    // -----------------------------
+    // 🔹 FETCH CHITTY
+    // -----------------------------
     const chitty = await prisma.chitty_scheme.findUnique({
       where: { id: BigInt(id) },
     });
@@ -217,7 +226,9 @@ export const getChittyByid = async (
       return;
     }
 
+    // -----------------------------
     // 🔹 LEVEL CHECK
+    // -----------------------------
     if (chitty.level === "DISTRICT") {
       if (
         !chitty.district_id ||
@@ -231,14 +242,17 @@ export const getChittyByid = async (
       }
     }
 
-    // 🔹 FETCH CYCLES ALWAYS
+    // -----------------------------
+    // 🔹 FETCH ALL CYCLES
+    // -----------------------------
     const chittyCycles = await prisma.chitty_cycle.findMany({
-      where: { chitty_id: BigInt(id)
-        // status:"OPEN"
-       },
+      where: { chitty_id: BigInt(id) },
       orderBy: { cycle_no: "asc" },
     });
 
+    // -----------------------------
+    // 🔹 MERGE DATE + LOT TIME
+    // -----------------------------
     const updatedCycles = chittyCycles.map((cycle) => ({
       ...cycle,
       cycle_start_date: mergeDateAndTime(
@@ -247,7 +261,23 @@ export const getChittyByid = async (
       ),
     }));
 
-    // 🔹 FETCH MEMBER ONLY IF RUNNING
+    // -----------------------------
+    // 🔹 FIND OPEN CYCLE
+    // -----------------------------
+    const openCycle = updatedCycles.find(
+      (cycle) => cycle.status === "OPEN"
+    );
+
+    // -----------------------------
+    // 🔹 SET CHITTY COUNTDOWN
+    // -----------------------------
+    const chittyCountdown = openCycle
+      ? openCycle.cycle_start_date
+      : null;
+
+    // -----------------------------
+    // 🔹 FETCH MEMBER (ONLY IF RUNNING)
+    // -----------------------------
     let chittyMember = null;
     if (chitty.status === "RUNNING") {
       chittyMember = await prisma.chitty_member.findFirst({
@@ -258,9 +288,15 @@ export const getChittyByid = async (
       });
     }
 
+    // -----------------------------
+    // 🔹 FINAL RESPONSE
+    // -----------------------------
     res.status(200).json({
       message: "Chitty fetched successfully",
-      chitty: serialize(chitty),
+      chitty: {
+        ...serialize(chitty),
+        chitty_countdown: chittyCountdown,
+      },
       chittyCycle: serialize(updatedCycles),
       chittyMember: serialize(chittyMember),
     });
@@ -269,6 +305,7 @@ export const getChittyByid = async (
     next(error);
   }
 };
+
 
 
 export const joinChitty = async (
