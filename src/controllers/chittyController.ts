@@ -233,8 +233,8 @@ export const getChittyByid = async (
 
     // 🔹 FETCH CYCLES ALWAYS
     const chittyCycles = await prisma.chitty_cycle.findMany({
-      where: { chitty_id: BigInt(id),
-        status:"OPEN"
+      where: { chitty_id: BigInt(id)
+        // status:"OPEN"
        },
       orderBy: { cycle_no: "asc" },
     });
