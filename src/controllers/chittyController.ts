@@ -308,6 +308,8 @@ export const getChittyByid = async (
 
 
 
+
+
 export const joinChitty = async (
   req: Request,
   res: Response,
@@ -316,17 +318,17 @@ export const joinChitty = async (
   try {
     const user = req.user;
 
-    // -----------------------------
-    // 🔹 Auth check
-    // -----------------------------
+    // -------------------------------------------------
+    // 🔹 AUTH CHECK
+    // -------------------------------------------------
     if (!user?.id) {
-      res.status(401).json({ message: "Unauthorized" });
+      res.status(401).json({ success: false, message: "Unauthorized" });
       return;
     }
 
-    // -----------------------------
-    // 🔹 Fetch agency
-    // -----------------------------
+    // -------------------------------------------------
+    // 🔹 FETCH USER AGENCY
+    // -------------------------------------------------
     const userAcc = await prisma.user_account.findUnique({
       where: { id: BigInt(user.id) },
       select: { agency_id: true },
@@ -340,14 +342,14 @@ export const joinChitty = async (
       return;
     }
 
+    // -------------------------------------------------
+    // 🔹 REQUEST BODY
+    // -------------------------------------------------
     const { chitty_id, remarks, number_of_req, join_date, exit_date } =
       req.body;
 
     const totalReq = Number(number_of_req);
 
-    // -----------------------------
-    // 🔹 Validation
-    // -----------------------------
     if (!chitty_id || !totalReq || totalReq <= 0) {
       res.status(400).json({
         success: false,
@@ -356,9 +358,9 @@ export const joinChitty = async (
       return;
     }
 
-    // -----------------------------
-    // 🔹 Date parsing
-    // -----------------------------
+    // -------------------------------------------------
+    // 🔹 DATE PARSING
+    // -------------------------------------------------
     const joinDateParsed = join_date ? new Date(join_date) : null;
     const exitDateParsed = exit_date ? new Date(exit_date) : null;
 
@@ -373,55 +375,56 @@ export const joinChitty = async (
       return;
     }
 
-    // -----------------------------
-    // 🔹 Get LAST member_no for this chitty
-    // -----------------------------
-    const lastMember = await prisma.chitty_member.findFirst({
-      where: {
+    // -------------------------------------------------
+    // 🔹 TRANSACTION (CRITICAL)
+    // -------------------------------------------------
+    const result = await prisma.$transaction(async (tx) => {
+      // Get last member number for this chitty
+      const lastMember = await tx.chitty_member.findFirst({
+        where: { chitty_id: BigInt(chitty_id) },
+        orderBy: { member_no: "desc" },
+        select: { member_no: true },
+      });
+
+      const startMemberNo = lastMember ? lastMember.member_no + 1 : 1;
+
+      // Prepare bulk insert data
+      const membersData = Array.from({ length: totalReq }, (_, index) => ({
         chitty_id: BigInt(chitty_id),
-      },
-      orderBy: {
-        member_no: "desc",
-      },
-      select: {
-        member_no: true,
-      },
+        agency_id: BigInt(userAcc.agency_id || 0),
+        member_no: startMemberNo + index, // ✅ UNIQUE & SEQUENTIAL
+        join_status: chitty_member_join_status.REQUESTED,
+        remarks: remarks ?? null,
+        join_date: joinDateParsed,
+        exit_date: exitDateParsed,
+      }));
+
+      const insertResult = await tx.chitty_member.createMany({
+        data: membersData,
+      });
+
+      return {
+        insertResult,
+        startMemberNo,
+      };
     });
 
-    const startMemberNo = lastMember ? lastMember.member_no + 1 : 1;
-
-    // -----------------------------
-    // 🔹 Prepare bulk data
-    // -----------------------------
-    const membersData = Array.from({ length: totalReq }, (_, index) => ({
-      chitty_id: BigInt(chitty_id),
-      agency_id: Number(userAcc.agency_id),
-      member_no: 0,
-      join_status: chitty_member_join_status.REQUESTED,
-      remarks: remarks ?? null,
-      join_date: joinDateParsed,
-      exit_date: exitDateParsed,
-    }));
-
-    // -----------------------------
-    // 🔹 Insert
-    // -----------------------------
-    const result = await prisma.chitty_member.createMany({
-      data: membersData,
-    });
-
+    // -------------------------------------------------
+    // 🔹 RESPONSE
+    // -------------------------------------------------
     res.status(201).json({
       success: true,
-      start_member_no: startMemberNo,
-      end_member_no: startMemberNo + totalReq - 1,
-      inserted: result.count,
       message: "Chitty members created successfully.",
+      inserted: result.insertResult.count,
+      start_member_no: result.startMemberNo,
+      end_member_no: result.startMemberNo + totalReq - 1,
     });
   } catch (error) {
-    console.error("Error creating chitty member:", error);
+    console.error("Error joining chitty:", error);
     next(error);
   }
 };
+
 
 export const ChittyAuctionBid = async (
   req: Request,
