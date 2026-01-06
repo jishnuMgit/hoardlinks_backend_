@@ -8,6 +8,7 @@ import announcement from './announcementRoutes.js'
 import profileRoutes from './profileRoutes.js'
 import tokenRoutess from './tokenRoutes.js'
 import chittyRoutes from './chittyRoute.js'
+import uploadChittyPaymentImageController   from './uploadChittyPaymentImageRoutes.js'
 
 const router = express.Router()
 
@@ -48,6 +49,6 @@ router
   ).use('/token',tokenRoutess
 
   ).use('/chitty',chittyRoutes
-  )
+  ).use( '/img',uploadChittyPaymentImageController)
   
 export default router

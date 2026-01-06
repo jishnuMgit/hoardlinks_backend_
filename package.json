@@ -6,8 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-        "swagger": "node swagger.js",
-
+    "swagger": "node swagger.js",
     "build": "tsc",
     "start": "node dist/index.js"
   },
@@ -27,6 +26,7 @@
     "jsonwebtoken": "^9.0.3",
     "logger": "^0.0.1",
     "morgan": "^1.10.1",
+    "multer": "^2.0.2",
     "swagger-autogen": "^2.23.7",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
@@ -41,6 +41,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
+    "@types/multer": "^2.0.0",
     "@types/node": "^24.10.1",
     "@types/swagger-ui-express": "^4.1.8",
     "nodemon": "^3.1.11",

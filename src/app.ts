@@ -51,6 +51,8 @@ app.get("/", (req, res) => {
 //routes
 app.use('/ping', (req, res) => res.json('pong'))
 app.use('/api/v1', v1Routes)
+app.use("/uploads", express.static("uploads"));
+
 
 //docs
 if (NODE_ENV !== 'production') {

@@ -266,6 +266,7 @@ model chitty_payment {
   payment_mode  chitty_payment_payment_mode?
   status        chitty_payment_status        @default(PENDING)
   remarks       String?                      @db.VarChar(250)
+  url           String                       @db.VarChar(255)
   created_at    DateTime                     @default(now()) @db.DateTime(0)
   updated_at    DateTime                     @default(now()) @db.DateTime(0)
   chitty_scheme chitty_scheme                @relation(fields: [chitty_id], references: [id], onDelete: Cascade, map: "fk_chitty_payment_chitty")
