@@ -6,6 +6,6 @@ src/firebase/firebase-service-account.json
 firebase-service-account.json
 src/firebase
 
-uploads/chitty-payments/
-uploads/chitty-payments/*
-uploads/chitty-payments/**
+# uploads/chitty-payments/
+# uploads/chitty-payments/*
+# uploads/chitty-payments/**
