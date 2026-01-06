@@ -230,3 +230,191 @@ export const updateAgency = async (
     next(createError(500, "Internal Server Error"));
   }
 };
+
+
+export const getAgenciesUnderState = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { state_id } = req.params;
+    const { q, page = "1", limit = "20" } = req.query;
+
+    // -----------------------------
+    // 🔹 Pagination
+    // -----------------------------
+    const pageNumber = Math.max(Number(page), 1);
+    const pageSize = Math.min(Number(limit), 100);
+    const skip = (pageNumber - 1) * pageSize;
+
+    // -----------------------------
+    // 🔹 WHERE condition (SAFE)
+    // -----------------------------
+    const whereCondition: any = {
+      AND: [
+        {
+          district_committee: {
+            state_id: BigInt(state_id),
+          },
+        },
+      ],
+    };
+
+    // 🔸 Search (NO mode)
+    if (q && typeof q === "string") {
+      whereCondition.AND.push({
+        OR: [
+          { agency_code: { contains: q } },
+          { legal_name: { contains: q } },
+          { trade_name: { contains: q } },
+          { contact_person: { contains: q } },
+          { contact_phone: { contains: q } },
+        ],
+      });
+    }
+
+    // -----------------------------
+    // 🔹 DB Query
+    // -----------------------------
+    const [total, agencies] = await Promise.all([
+      prisma.agency_member.count({ where: whereCondition }),
+
+      prisma.agency_member.findMany({
+        where: whereCondition,
+        skip,
+        take: pageSize,
+        orderBy: { legal_name: "asc" },
+        select: {
+          id: true,
+          agency_code: true,
+          legal_name: true,
+          trade_name: true,
+          contact_person: true,
+          contact_phone: true,
+          contact_email: true,
+          membership_status: true,
+          district_id: true,
+          district_committee: {
+            select: {
+              district_name: true,
+             
+
+            },
+          },
+        },
+      }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      meta: {
+        total,
+        page: pageNumber,
+        limit: pageSize,
+        totalPages: Math.ceil(total / pageSize),
+      },
+      data: agencies,
+    });
+  } catch (error) {
+    console.error("getAgenciesUnderState error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch agencies under state",
+    });
+  }
+};
+
+
+
+
+export const getAgenciesUnderDistrict = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { state_id, district_id } = req.params;
+    const { q, page = "1", limit = "20" } = req.query;
+
+    // -----------------------------
+    // 🔹 Pagination
+    // -----------------------------
+    const pageNumber = Math.max(Number(page), 1);
+    const pageSize = Math.min(Number(limit), 100);
+    const skip = (pageNumber - 1) * pageSize;
+
+    // -----------------------------
+    // 🔹 WHERE condition (CORRECT)
+    // -----------------------------
+    const whereCondition: any = {
+      AND: [
+        {
+          district_id: BigInt(district_id),
+        },
+        {
+          district_committee: {
+            state_id: BigInt(state_id),
+          },
+        },
+      ],
+    };
+
+    // 🔸 Search (NO mode, nested OR)
+    if (q && typeof q === "string") {
+      whereCondition.AND.push({
+        OR: [
+          { agency_code: { contains: q } },
+          { legal_name: { contains: q } },
+          { trade_name: { contains: q } },
+          { contact_person: { contains: q } },
+          { contact_phone: { contains: q } },
+        ],
+      });
+    }
+
+    // -----------------------------
+    // 🔹 DB Query
+    // -----------------------------
+    const [total, agencies] = await Promise.all([
+      prisma.agency_member.count({
+        where: whereCondition,
+      }),
+
+      prisma.agency_member.findMany({
+        where: whereCondition,
+        skip,
+        take: pageSize,
+        orderBy: { legal_name: "asc" },
+        select: {
+          id: true,
+          agency_code: true,
+          legal_name: true,
+          trade_name: true,
+          contact_person: true,
+          contact_phone: true,
+          contact_email: true,
+          membership_status: true,
+        },
+      }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      meta: {
+        total,
+        page: pageNumber,
+        limit: pageSize,
+        totalPages: Math.ceil(total / pageSize),
+      },
+      data: agencies,
+    });
+  } catch (error) {
+    console.error("getAgenciesUnderDistrict error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch agencies under district",
+    });
+  }
+};
+
+
+
