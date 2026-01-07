@@ -25,7 +25,6 @@ export const getChitty = async (
     // -----------------------------
     const currentUser = await prisma.user_account.findUnique({
       where: { id: BigInt(user.id) },
-     
     });
 
     if (!currentUser) {
@@ -35,9 +34,8 @@ export const getChitty = async (
 
     let whereCondition: any = {};
 
+    console.log("currentUser", currentUser);
 
-    console.log("currentUser",currentUser);
-    
     // =====================================================
     // 🟢 AGENCY LOGIC
     // =====================================================
@@ -124,12 +122,22 @@ export const getChitty = async (
 
         // 🔴 CLOSED
         prisma.chitty_scheme.findMany({
-          where: { status: "CLOSED", ...whereCondition },
+          where: {
+            status: "CLOSED",
+            ...whereCondition,
+            chitty_member: {
+              some: {
+                join_status: "APPROVED",
+                agency_id: BigInt(currentUser.agency_id), // ✅ BigInt safe
+              },
+            },
+          },
           include: {
             _count: {
               select: {
                 chitty_member: {
                   where: { join_status: "APPROVED" },
+                  agency_id: BigInt(currentUser.agency_id ||0),
                 },
               },
             },
@@ -188,12 +196,24 @@ export const getChitty = async (
       }),
 
       prisma.chitty_scheme.findMany({
-        where: { status: "RUNNING", ...whereCondition },
+        where: {
+          status: "RUNNING",
+          ...whereCondition,
+          chitty_member: {
+            some: {
+              join_status: "APPROVED",
+              agency_id: BigInt(currentUser.agency_id || 0), // ✅ BigInt safe
+            },
+          },
+        },
         include: {
           _count: {
             select: {
               chitty_member: {
-                where: { join_status: "APPROVED" },
+                where: {
+                  join_status: "APPROVED",
+                  agency_id: BigInt(currentUser.agency_id || 0), // ✅ consistent count
+                },
               },
             },
           },
@@ -201,18 +221,29 @@ export const getChitty = async (
       }),
 
       prisma.chitty_scheme.findMany({
-        where: { status: "CLOSED", ...whereCondition },
-        include: {
-          _count: {
-            select: {
-              chitty_member: {
-                where: { join_status: "APPROVED" },
+          where: {
+            status: "CLOSED",
+            ...whereCondition,
+            chitty_member: {
+              some: {
+                join_status: "APPROVED",
+                agency_id: BigInt(currentUser.agency_id ||0), // ✅ BigInt safe
               },
             },
           },
-        },
-      }),
-    ]);
+          include: { 
+            _count: {
+              select: {
+                chitty_member: {
+                  where: { join_status: "APPROVED" },
+                  agency_id: BigInt(currentUser.agency_id ||0),
+                },
+              },
+            },
+          },
+        }),
+      ]);
+
 
     res.status(200).json({
       message: "Chitty schemes fetched successfully",

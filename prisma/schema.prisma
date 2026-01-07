@@ -463,12 +463,6 @@ enum meeting_schedule_level {
   DISTRICT
 }
 
-enum user_account_role_type {
-  STATE
-  DISTRICT
-  AGENCY
-}
-
 enum state_committee_status {
   ACTIVE
   INACTIVE
@@ -574,4 +568,11 @@ enum chitty_scheme_status {
   RUNNING
   CLOSED
   CANCELLED
+}
+
+enum user_account_role_type {
+  STATE
+  DISTRICT
+  AGENCY
+  ADMIN
 }

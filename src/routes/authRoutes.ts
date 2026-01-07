@@ -22,7 +22,7 @@ router.route('/login').post(
   login
 )
 router.route('/logout').post( logout)
-router.route('/register').post(verifyToken, Register)
+router.route('/register').post( Register)
 router.route('/create/user').post( CreateUserRaw)
 
 export default router
