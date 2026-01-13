@@ -34,8 +34,6 @@ export const getChitty = async (
 
     let whereCondition: any = {};
 
-    console.log("currentUser", currentUser);
-
     // =====================================================
     // 🟢 AGENCY LOGIC
     // =====================================================
@@ -45,12 +43,8 @@ export const getChitty = async (
         return;
       }
 
-      // ✅ Type-safe BigInt (fixes TS error)
       const agencyId = currentUser.agency_id;
 
-      console.log("agencyId", agencyId);
-
-      // Fetch agency to get district_id
       const agency = await prisma.agency_member.findUnique({
         where: { id: agencyId },
         select: { district_id: true },
@@ -61,24 +55,13 @@ export const getChitty = async (
         return;
       }
 
-      console.log("agency", agency);
-
       whereCondition = {
         OR: [
-          // STATE level chitty
           { level: "STATE" },
-
-          // DISTRICT level for agency district
-          {
-            level: "DISTRICT",
-            district_id: agency.district_id,
-          },
+          { level: "DISTRICT", district_id: agency.district_id },
         ],
       };
 
-      // -----------------------------
-      // 🔹 Fetch schemes
-      // -----------------------------
       const [open, running, closed] = await Promise.all([
         // 🟢 OPEN
         prisma.chitty_scheme.findMany({
@@ -94,7 +77,7 @@ export const getChitty = async (
           },
         }),
 
-        // 🟢 RUNNING (only if THIS agency has approved members)
+        // 🟡 RUNNING
         prisma.chitty_scheme.findMany({
           where: {
             status: "RUNNING",
@@ -102,7 +85,7 @@ export const getChitty = async (
             chitty_member: {
               some: {
                 join_status: "APPROVED",
-                agency_id: BigInt(currentUser.agency_id), // ✅ BigInt safe
+                agency_id: agencyId,
               },
             },
           },
@@ -112,7 +95,7 @@ export const getChitty = async (
                 chitty_member: {
                   where: {
                     join_status: "APPROVED",
-                    agency_id: BigInt(currentUser.agency_id), // ✅ consistent count
+                    agency_id: agencyId,
                   },
                 },
               },
@@ -128,7 +111,7 @@ export const getChitty = async (
             chitty_member: {
               some: {
                 join_status: "APPROVED",
-                agency_id: BigInt(currentUser.agency_id), // ✅ BigInt safe
+                agency_id: agencyId,
               },
             },
           },
@@ -136,8 +119,10 @@ export const getChitty = async (
             _count: {
               select: {
                 chitty_member: {
-                  where: { join_status: "APPROVED" },
-                  agency_id: BigInt(currentUser.agency_id ||0),
+                  where: {
+                    join_status: "APPROVED",
+                    agency_id: agencyId,
+                  },
                 },
               },
             },
@@ -150,9 +135,8 @@ export const getChitty = async (
         open: serialize(open),
         running: serialize(running),
         closed: serialize(closed),
-        agency: serialize(currentUser.agency_id),
+        agency: serialize(agencyId),
       });
-
       return;
     }
 
@@ -178,10 +162,10 @@ export const getChitty = async (
       };
     }
 
-    // -----------------------------
-    // 🔹 Fetch schemes (STATE / DISTRICT)
-    // -----------------------------
+    const agencyId = BigInt(currentUser.agency_id || 0);
+
     const [open, running, closed] = await Promise.all([
+      // 🟢 OPEN
       prisma.chitty_scheme.findMany({
         where: { status: "OPEN", ...whereCondition },
         include: {
@@ -195,6 +179,7 @@ export const getChitty = async (
         },
       }),
 
+      // 🟡 RUNNING
       prisma.chitty_scheme.findMany({
         where: {
           status: "RUNNING",
@@ -202,7 +187,7 @@ export const getChitty = async (
           chitty_member: {
             some: {
               join_status: "APPROVED",
-              agency_id: BigInt(currentUser.agency_id || 0), // ✅ BigInt safe
+              agency_id: agencyId,
             },
           },
         },
@@ -212,7 +197,7 @@ export const getChitty = async (
               chitty_member: {
                 where: {
                   join_status: "APPROVED",
-                  agency_id: BigInt(currentUser.agency_id || 0), // ✅ consistent count
+                  agency_id: agencyId,
                 },
               },
             },
@@ -220,43 +205,46 @@ export const getChitty = async (
         },
       }),
 
+      // 🔴 CLOSED
       prisma.chitty_scheme.findMany({
-          where: {
-            status: "CLOSED",
-            ...whereCondition,
-            chitty_member: {
-              some: {
-                join_status: "APPROVED",
-                agency_id: BigInt(currentUser.agency_id ||0), // ✅ BigInt safe
-              },
+        where: {
+          status: "CLOSED",
+          ...whereCondition,
+          chitty_member: {
+            some: {
+              join_status: "APPROVED",
+              agency_id: agencyId,
             },
           },
-          include: { 
-            _count: {
-              select: {
-                chitty_member: {
-                  where: { join_status: "APPROVED" },
-                  agency_id: BigInt(currentUser.agency_id ||0),
+        },
+        include: {
+          _count: {
+            select: {
+              chitty_member: {
+                where: {
+                  join_status: "APPROVED",
+                  agency_id: agencyId,
                 },
               },
             },
           },
-        }),
-      ]);
-
+        },
+      }),
+    ]);
 
     res.status(200).json({
       message: "Chitty schemes fetched successfully",
       open: serialize(open),
       running: serialize(running),
       closed: serialize(closed),
-      agency: serialize(currentUser.agency_id),
+      agency: serialize(agencyId),
     });
   } catch (error) {
     console.error("Error fetching chitty schemes:", error);
     next(error);
   }
 };
+
 
 const mergeDateAndTime = (date: Date, time: Date): Date => {
   const merged = new Date(date);

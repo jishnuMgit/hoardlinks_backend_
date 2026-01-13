@@ -1,7 +1,7 @@
 import { prisma } from "#config/db.js";
 import { NextFunction, Request, Response } from "express";
-import createError from "http-errors";
-import { COOKIE_NAME, COOKIE_OPTIONS, redisLog } from "#config/index.js";
+import { sendOtpMail } from "../utils/sendOtpMail.js";
+
 import jwt from "jsonwebtoken";
 import { sendPushNotification } from "../utils/sendNotification.js";
 
@@ -146,8 +146,6 @@ export const login = async (
   }
 };
 
-
-
 const convertBigInt = (obj: any) =>
   JSON.parse(
     JSON.stringify(obj, (key, value) =>
@@ -168,14 +166,15 @@ export const Register = async (
       role_type,
       state_id,
       district_id,
+      email,
       agency_id,
       fcm_token,
       device_id,
-      device_type: bodyDeviceType, // may or may not come
+      device_type: bodyDeviceType,
     } = req.body;
 
-    // Logged-in creator user (from auth middleware)
     const loggedUser = req.user; // { id, role_type }
+    const creatorRole = loggedUser?.role_type;
 
     // ------------------------------
     // 🔹 BASIC VALIDATION
@@ -188,27 +187,53 @@ export const Register = async (
       });
     }
 
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "email is required.",
+      });
+    }
     // ------------------------------
     // 🔥 ROLE-BASED PERMISSION CHECK
     // ------------------------------
-    const creatorRole = loggedUser?.role_type;
-
     const allowedRoles: Record<string, string[]> = {
+      ADMIN: ["ADMIN", "STATE", "DISTRICT", "AGENCY"],
       STATE: ["STATE", "DISTRICT", "AGENCY"],
       DISTRICT: ["DISTRICT", "AGENCY"],
       AGENCY: ["AGENCY"],
     };
 
-    if (!allowedRoles[creatorRole]?.includes(role_type)) {
-      return res.status(403).json({
-        success: false,
-        message: `You are not allowed to create a user with role_type ${role_type}.`,
+    // Allow first ADMIN creation (system bootstrap)
+    if (role_type === "ADMIN") {
+      const adminCount = await prisma.user_account.count({
+        where: { role_type: "ADMIN" },
       });
+
+      if (adminCount > 0 && creatorRole !== "ADMIN") {
+        return res.status(403).json({
+          success: false,
+          message: "Only ADMIN users can create another ADMIN.",
+        });
+      }
+    } else {
+      if (!allowedRoles[creatorRole]?.includes(role_type)) {
+        return res.status(403).json({
+          success: false,
+          message: `You are not allowed to create a user with role_type ${role_type}.`,
+        });
+      }
     }
 
     // ------------------------------
     // 🔹 ROLE-BASED ID VALIDATION
     // ------------------------------
+    if (role_type === "ADMIN" && (state_id || district_id || agency_id)) {
+      return res.status(400).json({
+        success: false,
+        message: "ADMIN role cannot have state_id, district_id, or agency_id.",
+      });
+    }
+
     if (role_type === "STATE" && !state_id) {
       return res.status(400).json({
         success: false,
@@ -286,7 +311,6 @@ export const Register = async (
     // 🔔 DEVICE TYPE DECISION
     // ------------------------------
     const userAgent = req.headers["user-agent"];
-
     const deviceType =
       bodyDeviceType ?? (fcm_token ? getDeviceType(userAgent) : null);
 
@@ -300,6 +324,7 @@ export const Register = async (
     if (role_type === "STATE") stateId = Number(state_id);
     if (role_type === "DISTRICT") districtId = Number(district_id);
     if (role_type === "AGENCY") agencyId = Number(agency_id);
+    // ADMIN → all null
 
     // ------------------------------
     // 🔹 CREATE USER
@@ -307,6 +332,8 @@ export const Register = async (
     const newUser = await prisma.user_account.create({
       data: {
         login_id,
+        email,
+        code: "",
         password_hash,
         mobile_number,
         role_type,
@@ -314,30 +341,27 @@ export const Register = async (
         state_id: stateId,
         district_id: districtId,
         agency_id: agencyId,
-
-        // 🔔 Push fields
         FCM_token: fcm_token ?? null,
-        deviceType: deviceType,
-        firebaseUserKey: "", // Add required firebaseUserKey field
+        deviceType,
+        firebaseUserKey: "",
       },
     });
 
-    // 1️⃣ Create user
-
-    // 2️⃣ Create Firebase key
+    // ------------------------------
+    // 🔑 FIREBASE KEY
+    // ------------------------------
     const firebaseUserKey = await createFirebaseUserKey(
       newUser.id.toString(),
       newUser.login_id
     );
 
-    // 3️⃣ Save Firebase key
     await prisma.user_account.update({
       where: { id: newUser.id },
       data: { firebaseUserKey },
     });
 
     // ------------------------------
-    // 🔔 SEND WELCOME PUSH
+    // 🔔 WELCOME PUSH
     // ------------------------------
     if (newUser.FCM_token) {
       await sendPushNotification(
@@ -357,7 +381,6 @@ export const Register = async (
     });
   } catch (error) {
     console.error("Register Error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Server error.",
@@ -377,7 +400,6 @@ export const logout = async (
   }
 };
 
-
 export const CreateUserRaw = async (
   req: Request,
   res: Response,
@@ -389,6 +411,7 @@ export const CreateUserRaw = async (
       password,
       mobile_number,
       role_type,
+      email,
       state_id,
       district_id,
       agency_id,
@@ -407,6 +430,12 @@ export const CreateUserRaw = async (
       });
     }
 
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "email is required.",
+      });
+    }
     // ------------------------------
     // 🔹 DUPLICATE CHECK
     // ------------------------------
@@ -431,21 +460,23 @@ export const CreateUserRaw = async (
     // ------------------------------
     // ✅ INSERT EVERYTHING AS-IS
     // ------------------------------
-const user = await prisma.user_account.create({
-  data: {
-    login_id,
-    password_hash,
-    mobile_number,
-    role_type,
-    device_id: device_id ?? "",
-    deviceType: device_type ?? "",
-    FCM_token: fcm_token ?? "",
-    firebaseUserKey: "",
-    state_id: state_id ? Number(state_id) : null,
-    district_id: district_id ? Number(district_id) : null,
-    agency_id: agency_id ? Number(agency_id) : null,
-  },
-});
+    const user = await prisma.user_account.create({
+      data: {
+        login_id,
+        password_hash,
+        mobile_number,
+        email,
+        code: "",
+        role_type,
+        device_id: device_id ?? "",
+        deviceType: device_type ?? "",
+        FCM_token: fcm_token ?? "",
+        firebaseUserKey: "",
+        state_id: state_id ? Number(state_id) : null,
+        district_id: district_id ? Number(district_id) : null,
+        agency_id: agency_id ? Number(agency_id) : null,
+      },
+    });
 
     // ------------------------------
     // 🔑 FIREBASE KEY
@@ -470,6 +501,142 @@ const user = await prisma.user_account.create({
     return res.status(500).json({
       success: false,
       message: "Server error",
+    });
+  }
+};
+
+export const forgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { email } = req.body;
+
+  try {
+    const user = await prisma.user_account.findFirst({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Account not found",
+      });
+    }
+
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+
+    await prisma.user_account.update({
+      where: { id: user.id },
+      data: {
+        code: code, // create this field in schema
+      },
+    });
+
+    await sendOtpMail(user.email, code);
+
+    const resetToken = jwt.sign(
+      { userId: user.id },
+      process.env.RESET_SECRET!,
+      { expiresIn: "10m" }
+    );
+    res.json({
+      success: true,
+      message: "OTP sent to email",
+      resetToken,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const forgotloginID = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email } = req.body;
+
+    const user = await prisma.user_account.findFirst({
+      where: { email },
+      select: { login_id: true, mobile_number: true, email: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "No user found with the provided email.",
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      message: "Login ID retrieved successfully.",
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.resetUser?.userId;
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request. User ID missing.",
+      });
+    }
+    const { newPassword, code } = req.body;
+    if (!newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "newPassword is required.",
+      });
+    }
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP code is required.",
+      });
+    }
+
+    const user = await prisma.user_account.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+    if (user.code !== code) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP code.",
+      });
+    }
+    const password_hash = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user_account.update({
+      where: { id: userId },
+      data: { password_hash, code: "" },
+    });
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully.",
+    });
+  } catch (error) {
+    console.error("Reset Password Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error.",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };

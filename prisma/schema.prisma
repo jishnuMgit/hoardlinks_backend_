@@ -119,6 +119,8 @@ model user_account {
   login_id           String                 @unique(map: "login_id") @db.VarChar(80)
   password_hash      String                 @db.VarChar(255)
   mobile_number      String                 @db.VarChar(20)
+  email              String                 @db.VarChar(100)
+  code               String                 @db.VarChar(50)
   role_type          user_account_role_type
   state_id           BigInt?
   district_id        BigInt?
