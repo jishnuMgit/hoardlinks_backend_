@@ -356,8 +356,8 @@ export const getChittyByid = async (
     // 🔹 FETCH MEMBER (ONLY IF RUNNING)
     // -----------------------------
     let chittyMember = null;
-    if (chitty.status === "RUNNING") {
-      chittyMember = await prisma.chitty_member.findFirst({
+    if (chitty.status === "RUNNING" || chitty.status === "OPEN") {
+      chittyMember = await prisma.chitty_member.findMany({
         where: {
           chitty_id: BigInt(id),
           agency_id: userAcc.agency_id || BigInt(0),
