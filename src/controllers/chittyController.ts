@@ -58,12 +58,11 @@ export const getChitty = async (
       whereCondition = {
         OR: [
           { level: "STATE" },
-          { level: "DISTRICT", district_id: agency.district_id },
+          { level: "DISTRICT", district_id: currentUser.district_id },
         ],
       };
 
       const [open, running, closed] = await Promise.all([
-        // 🟢 OPEN
         prisma.chitty_scheme.findMany({
           where: { status: "OPEN", ...whereCondition },
           include: {
