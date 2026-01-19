@@ -513,6 +513,9 @@ export const forgotPassword = async (
   const { email } = req.body;
 
   try {
+    // -----------------------------
+    // 🔹 Find user by email
+    // -----------------------------
     const user = await prisma.user_account.findFirst({
       where: { email },
     });
@@ -524,29 +527,49 @@ export const forgotPassword = async (
       });
     }
 
+    // -----------------------------
+    // 🔹 Generate OTP
+    // -----------------------------
     const code = Math.floor(1000 + Math.random() * 9000).toString();
 
+    // -----------------------------
+    // 🔹 Save OTP
+    // -----------------------------
     await prisma.user_account.update({
       where: { id: user.id },
       data: { code },
     });
 
-    // 🔹 Respond FIRST (important)
+    // -----------------------------
+    // 🔹 Create 10-minute reset token
+    // -----------------------------
+    const resetToken = jwt.sign(
+      { userId: user.id },
+      process.env.RESET_SECRET!,
+      { expiresIn: "10m" }
+    );
+
+    // -----------------------------
+    // 🔹 Respond FIRST
+    // -----------------------------
     res.status(200).json({
       success: true,
       message: "OTP sent to email",
+      resetToken,
+      expiresIn: "10 minutes",
     });
 
-    // 🔹 Send email AFTER response
+    // -----------------------------
+    // 🔹 Send email in background
+    // -----------------------------
     sendOtpMail(user.email, code).catch(err => {
-      console.error("Email sending failed:", err);
+      console.error("❌ Email sending failed:", err);
     });
 
   } catch (error) {
     next(error);
   }
 };
-
 
 export const forgotloginID = async (
   req: Request,
