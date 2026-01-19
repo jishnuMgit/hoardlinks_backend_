@@ -528,27 +528,25 @@ export const forgotPassword = async (
 
     await prisma.user_account.update({
       where: { id: user.id },
-      data: {
-        code: code, // create this field in schema
-      },
+      data: { code },
     });
 
-    await sendOtpMail(user.email, code);
-
-    const resetToken = jwt.sign(
-      { userId: user.id },
-      process.env.RESET_SECRET!,
-      { expiresIn: "10m" }
-    );
-    res.json({
+    // 🔹 Respond FIRST (important)
+    res.status(200).json({
       success: true,
       message: "OTP sent to email",
-      resetToken,
     });
+
+    // 🔹 Send email AFTER response
+    sendOtpMail(user.email, code).catch(err => {
+      console.error("Email sending failed:", err);
+    });
+
   } catch (error) {
     next(error);
   }
 };
+
 
 export const forgotloginID = async (
   req: Request,
