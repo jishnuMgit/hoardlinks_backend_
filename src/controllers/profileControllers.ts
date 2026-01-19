@@ -112,6 +112,7 @@ export const updateUserAccount = async (
       district_id,
       login_id,
       agency_id,
+      email,
       FCM_token,
       device_id,
       deviceType,
@@ -139,6 +140,22 @@ export const updateUserAccount = async (
         return;
       }
     }
+    if(email !== undefined){
+      const emailExists = await prisma.user_account.findFirst({
+        where: {
+          email: email,
+          NOT: {
+            id: BigInt(user.id),
+          },
+        },
+      });
+      if (emailExists) {
+        res.status(400).json({
+          message: "Email already in use by another user",
+        });
+        return;
+      }
+    }
 
     // -----------------------------
     // 🔹 Build update object safely
@@ -147,6 +164,8 @@ export const updateUserAccount = async (
       updated_at: new Date(),
     };
 
+    if (email !== undefined)
+      updateData.email = email;
     if (mobile_number !== undefined)
       updateData.mobile_number = mobile_number;
 
@@ -198,6 +217,7 @@ export const updateUserAccount = async (
         id: true,
         login_id: true,
         mobile_number: true,
+        email: true,
         role_type: true,
         state_id: true,
         district_id: true,
