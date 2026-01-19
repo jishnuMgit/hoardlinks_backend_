@@ -104,7 +104,7 @@ export const updateUserAccount = async (
     }
 
     // -----------------------------
-    // 🔹 Allowed fields for update
+    // 🔹 Allowed fields
     // -----------------------------
     const {
       mobile_number,
@@ -120,22 +120,38 @@ export const updateUserAccount = async (
     } = req.body;
 
     // -----------------------------
+    // 🔹 Check login_id uniqueness (ONLY if provided)
+    // -----------------------------
+    if (login_id !== undefined) {
+      const userExists = await prisma.user_account.findFirst({
+        where: {
+          login_id: login_id,
+          NOT: {
+            id: BigInt(user.id),
+          },
+        },
+      });
+
+      if (userExists) {
+        res.status(400).json({
+          message: "Login ID already in use by another user",
+        });
+        return;
+      }
+    }
+
+    // -----------------------------
     // 🔹 Build update object safely
     // -----------------------------
-
-    const userExists = await prisma.user_account.findUnique({
-      where: { login_id: login_id },
-    });
-    if (userExists) {
-      res.status(400).json({ message: "Login ID already in use by another user" });
-      return;
-    }
     const updateData: any = {
       updated_at: new Date(),
     };
 
     if (mobile_number !== undefined)
       updateData.mobile_number = mobile_number;
+
+    if (login_id !== undefined)
+      updateData.login_id = login_id;
 
     if (FCM_token !== undefined)
       updateData.FCM_token = FCM_token;
@@ -152,7 +168,9 @@ export const updateUserAccount = async (
     if (last_login_at !== undefined)
       updateData.last_login_at = new Date(last_login_at);
 
-    // Relations (BigInt-safe)
+    // -----------------------------
+    // 🔹 Relations (BigInt-safe)
+    // -----------------------------
     if (state_id !== undefined)
       updateData.state_id = state_id ? BigInt(state_id) : null;
 
@@ -161,8 +179,14 @@ export const updateUserAccount = async (
 
     if (agency_id !== undefined)
       updateData.agency_id = agency_id ? BigInt(agency_id) : null;
-    if (login_id !== undefined)
-      updateData.login_id = login_id;
+
+    // -----------------------------
+    // 🔹 Prevent empty update
+    // -----------------------------
+    if (Object.keys(updateData).length === 1) {
+      res.status(400).json({ message: "No fields provided to update" });
+      return;
+    }
 
     // -----------------------------
     // 🔹 Update user
@@ -184,6 +208,7 @@ export const updateUserAccount = async (
     });
 
     res.status(200).json({
+      success: true,
       message: "User updated successfully",
       data: updatedUser,
     });
