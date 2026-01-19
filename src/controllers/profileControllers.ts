@@ -123,7 +123,7 @@ export const updateUserAccount = async (
     // -----------------------------
     // 🔹 Check login_id uniqueness (ONLY if provided)
     // -----------------------------
-    if (login_id !== undefined) {
+    if (login_id !== undefined && login_id !== currentUser.login_id) {
       const userExists = await prisma.user_account.findFirst({
         where: {
           login_id: login_id,
@@ -140,22 +140,24 @@ export const updateUserAccount = async (
         return;
       }
     }
-    if(email !== undefined){
-      const emailExists = await prisma.user_account.findFirst({
-        where: {
-          email: email,
-          NOT: {
-            id: BigInt(user.id),
-          },
-        },
-      });
-      if (emailExists) {
-        res.status(400).json({
-          message: "Email already in use by another user",
-        });
-        return;
-      }
-    }
+  if (email !== undefined && email !== currentUser.email) {
+  const emailExists = await prisma.user_account.findFirst({
+    where: {
+      email,
+      NOT: {
+        id: BigInt(user.id),
+      },
+    },
+  });
+
+  if (emailExists) {
+    res.status(400).json({
+      message: "Email already in use by another user",
+    });
+    return;
+  }
+}
+
 
     // -----------------------------
     // 🔹 Build update object safely
