@@ -3,14 +3,14 @@ import nodemailer from "nodemailer";
 export const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 587,
-  secure: false,
+  secure: false, // TLS via STARTTLS
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // App Password
+    pass: process.env.EMAIL_PASS, // Gmail App Password
   },
 
-  // 🔑 IMPORTANT TIMEOUTS
-  connectionTimeout: 10000, // 10 sec
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
+  // 🔑 TIMEOUTS → 60 seconds
+  connectionTimeout: 60 * 1000, // 60000 ms
+  greetingTimeout: 60 * 1000,
+  socketTimeout: 60 * 1000,
 });
