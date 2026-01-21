@@ -28,6 +28,7 @@ export const getProfile = async (
         state_id: true,
         district_id: true,
         agency_id: true,
+        img_url: true,
         is_active: true,
         last_login_at: true,
         created_at: true,
