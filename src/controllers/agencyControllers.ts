@@ -326,14 +326,24 @@ export const getAgenciesUnderState = async (
 
 
 
-
 export const getAgenciesUnderDistrict = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
     const { state_id, district_id } = req.params;
-    const { q, page = "1", limit = "20" } = req.query;
+    const { legal_name, trade_name, page = "1", limit = "20" } = req.query;
+
+    if (!state_id || !district_id) {
+      res.status(400).json({
+        success: false,
+        message: "state_id and district_id are required",
+      });
+      return;
+    }
+
+    console.log(legal_name, trade_name);
+    
 
     // -----------------------------
     // 🔹 Pagination
@@ -343,13 +353,11 @@ export const getAgenciesUnderDistrict = async (
     const skip = (pageNumber - 1) * pageSize;
 
     // -----------------------------
-    // 🔹 WHERE condition (CORRECT)
+    // 🔹 Base WHERE condition
     // -----------------------------
     const whereCondition: any = {
       AND: [
-        {
-          district_id: BigInt(district_id),
-        },
+        { district_id: BigInt(district_id) },
         {
           district_committee: {
             state_id: BigInt(state_id),
@@ -358,26 +366,49 @@ export const getAgenciesUnderDistrict = async (
       ],
     };
 
-    // 🔸 Search (NO mode, nested OR)
-    if (q && typeof q === "string") {
-      whereCondition.AND.push({
-        OR: [
-          { agency_code: { contains: q } },
-          { legal_name: { contains: q } },
-          { trade_name: { contains: q } },
-          { contact_person: { contains: q } },
-          { contact_phone: { contains: q } },
-        ],
-      });
-    }
+    // -----------------------------
+    // 🔹 SEARCH LOGIC (YOUR REQUIREMENT)
+    // -----------------------------
+   if (
+  (legal_name && typeof legal_name === "string") ||
+  (trade_name && typeof trade_name === "string")
+) {
+  whereCondition.AND.push({
+    OR: [
+      ...(legal_name && typeof legal_name === "string"
+        ? [
+            {
+              legal_name: {
+                contains: legal_name,
+              },
+            },
+            {
+              trade_name: {
+                contains: legal_name,
+              },
+            },
+          ]
+        : []),
+
+      ...(trade_name && typeof trade_name === "string"
+        ? [
+            {
+              trade_name: {
+                contains: trade_name,
+              },
+            },
+          ]
+        : []),
+    ],
+  });
+}
+
 
     // -----------------------------
     // 🔹 DB Query
     // -----------------------------
     const [total, agencies] = await Promise.all([
-      prisma.agency_member.count({
-        where: whereCondition,
-      }),
+      prisma.agency_member.count({ where: whereCondition }),
 
       prisma.agency_member.findMany({
         where: whereCondition,
@@ -415,6 +446,7 @@ export const getAgenciesUnderDistrict = async (
     });
   }
 };
+
 
 
 
