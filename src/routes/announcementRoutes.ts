@@ -1,5 +1,5 @@
-import { createAnnouncement, getAllAnnouncements, getAnnouncementById, updateAnnouncement } from '##/controllers/announcementControllers.js'
-import { verifyToken } from '##/middlewares/verifyToken.js'
+import { createAnnouncement, getAllAnnouncements, getAnnouncementById, updateAnnouncement } from '../controllers/announcementControllers.js'
+import { verifyToken } from '../middlewares/verifyToken.js'
 import express from 'express'
 
 const router = express.Router()

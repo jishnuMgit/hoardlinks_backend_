@@ -4,12 +4,14 @@
   "description": "",
   "main": "index.js",
   "type": "module",
-  "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "swagger": "node swagger.js",
-    "build": "tsc",
-    "start": "node dist/index.js"
-  },
+ "scripts": {
+  "dev": "tsx watch src/index.ts",
+  "swagger": "node swagger.js",
+  "build": "tsc",
+  "start": "node dist/index.js",
+  "prisma-generate": "npx prisma generate"
+},
+
   "keywords": [],
   "author": "",
   "license": "ISC",

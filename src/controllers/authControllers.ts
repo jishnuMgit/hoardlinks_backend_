@@ -1,4 +1,4 @@
-import { prisma } from "#config/db.js";
+import { prisma } from "../config/db.js";
 import { NextFunction, Request, Response } from "express";
 import { sendOtpMail } from "../utils/sendOtpMail.js";
 
@@ -6,8 +6,8 @@ import jwt from "jsonwebtoken";
 import { sendPushNotification } from "../utils/sendNotification.js";
 
 import bcrypt from "bcryptjs";
-import { getDeviceType } from "##/utils/deviceType.js";
-import { createFirebaseUserKey } from "##/utils/createFirebaseUser.js";
+import { getDeviceType } from "../utils/deviceType.js";
+import { createFirebaseUserKey } from "../utils/createFirebaseUser.js";
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
 export const login = async (
@@ -21,12 +21,12 @@ export const login = async (
       password,
       device_type,
       device_id,
-      FCM_token, // 🔥 ADD THIS
+      FCM_token,
     } = req.body;
 
-    // ------------------------------
-    // 🔹 BASIC VALIDATION
-    // ------------------------------
+    /* =========================================
+       🔹 BASIC VALIDATION
+    ========================================= */
     if (!device_type) {
       return res.status(400).json({
         success: false,
@@ -48,11 +48,14 @@ export const login = async (
       });
     }
 
-    // ------------------------------
-    // 🔹 FIND USER
-    // ------------------------------
+    /* =========================================
+       🔹 FIND USER + AGENCY (🔥 important)
+    ========================================= */
     const user = await prisma.user_account.findUnique({
       where: { login_id },
+      include: {
+        agency_member: true, // 🔥 join agency table
+      },
     });
 
     if (!user) {
@@ -62,10 +65,11 @@ export const login = async (
       });
     }
 
-    // ------------------------------
-    // 🔐 PASSWORD CHECK
-    // ------------------------------
+    /* =========================================
+       🔐 PASSWORD CHECK
+    ========================================= */
     const isMatch = await bcrypt.compare(password, user.password_hash);
+
     if (!isMatch) {
       return res.status(400).json({
         success: false,
@@ -73,15 +77,33 @@ export const login = async (
       });
     }
 
-    // ------------------------------
-    // 🔔 DEVICE TYPE DETECTION
-    // ------------------------------
+    /* =========================================
+       🔹 MEMBERSHIP EXPIRY CHECK (NEW LOGIC)
+    ========================================= */
+    let expirestatus = 1; // default expired
+
+    if (user.agency_member?.membership_end_dt) {
+      const today = new Date();
+      const endDate = new Date(user.agency_member.membership_end_dt);
+
+      // remove time for safe compare
+      today.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+
+      if (today <= endDate) {
+        expirestatus = 0; // active
+      }
+    }
+
+    /* =========================================
+       🔔 DEVICE TYPE DETECTION
+    ========================================= */
     const userAgent = req.headers["user-agent"];
     const detectedDeviceType = getDeviceType(userAgent);
 
-    // ------------------------------
-    // 🔑 ENSURE FIREBASE USER EXISTS
-    // ------------------------------
+    /* =========================================
+       🔑 FIREBASE USER
+    ========================================= */
     let firebaseUserKey = user.firebaseUserKey;
 
     if (!firebaseUserKey) {
@@ -91,53 +113,51 @@ export const login = async (
       );
     }
 
-    // ------------------------------
-    // 🔄 UPDATE USER (INCLUDING FCM TOKEN)
-    // ------------------------------
+    /* =========================================
+       🔄 UPDATE USER
+    ========================================= */
     const updatedUser = await prisma.user_account.update({
       where: { id: user.id },
       data: {
         deviceType: device_type || detectedDeviceType,
         device_id: device_id ?? user.device_id,
         firebaseUserKey,
-        FCM_token: FCM_token ?? user.FCM_token, // 🔔 IMPORTANT
+        FCM_token: FCM_token ?? user.FCM_token,
+        last_login_at: new Date(),
       },
     });
 
-    // ------------------------------
-    // 🔑 GENERATE JWT
-    // ------------------------------
-    if (!JWT_SECRET) {
-      throw new Error("JWT_SECRET is not set.");
-    }
+    /* =========================================
+       🔑 JWT
+    ========================================= */
+    const token = jwt.sign(
+      {
+        id: updatedUser.id.toString(),
+        role_type: updatedUser.role_type,
+      },
+      JWT_SECRET,
+      { expiresIn: "1d" }
+    );
 
-    const tokenPayload = {
-      id: updatedUser.id.toString(),
-      role_type: updatedUser.role_type,
-    };
-
-    const token = jwt.sign(tokenPayload, JWT_SECRET, {
-      expiresIn: "1d",
-    });
-
-    // ------------------------------
-    // 🍪 SET COOKIE
-    // ------------------------------
+    /* =========================================
+       🍪 COOKIE
+    ========================================= */
     res.cookie("access_token", token, {
       httpOnly: true,
-      secure: false, // true in production
+      secure: false,
       sameSite: "lax",
       maxAge: 24 * 60 * 60 * 1000,
     });
 
-    // ------------------------------
-    // ✅ RESPONSE
-    // ------------------------------
+    /* =========================================
+       ✅ RESPONSE
+    ========================================= */
     return res.status(200).json({
       success: true,
       message: "Login successful.",
       access_token: token,
       role_type: updatedUser.role_type,
+      expirestatus, // 🔥 0 active | 1 expired
       user: convertBigInt(updatedUser),
     });
   } catch (error) {

@@ -1,5 +1,5 @@
 import createError from 'http-errors'
-import { ErrorResponse } from '#models/responseModel.js'
+import { ErrorResponse } from '../models/responseModel.js'
 import { NextFunction, Request, Response } from 'express'
 import chalk from 'chalk'
 

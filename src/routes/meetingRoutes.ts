@@ -1,5 +1,5 @@
-import { createMeeting, getAllMeetings, getMeetingById, updateMeeting } from '##/controllers/meetingControllers.js'
-import { verifyToken } from '##/middlewares/verifyToken.js'
+import { createMeeting, getAllMeetings, getMeetingById, updateMeeting } from '../controllers/meetingControllers.js'
+import { verifyToken } from '../middlewares/verifyToken.js'
 import express from 'express'
 
 const router = express.Router()

@@ -1,5 +1,5 @@
 import express from "express";
-import { verifyToken } from "##/middlewares/verifyToken.js";
+import { verifyToken } from "../middlewares/verifyToken.js";
 import {
   ChittyAuctionBid,
   GetAuctionBidId,
@@ -7,7 +7,7 @@ import {
   GetChittyAuctionBids,
   getChittyByid,
   joinChitty,
-} from "##/controllers/chittyController.js";
+} from "../controllers/chittyController.js";
 
 const router = express.Router();
 

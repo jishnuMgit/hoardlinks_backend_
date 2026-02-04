@@ -1,7 +1,7 @@
 import createError from 'http-errors'
 import { NextFunction, Request, Response } from 'express'
-import { decodeToken } from '#services/authServices.js'
-import { COOKIE_NAME, redisLog } from '#config/index.js'
+import { decodeToken } from '../services/authServices.js'
+import { COOKIE_NAME, redisLog } from '../config/index.js'
 import { log } from 'console'
 
 declare global {

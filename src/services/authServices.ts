@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt'
 import jwt, { type JwtPayload } from 'jsonwebtoken'
-import { JWT_SECRET } from '#config/env.js'
+import { JWT_SECRET } from '../config/env.js'
 
 export interface TokenPayload extends JwtPayload {
   id: string | number

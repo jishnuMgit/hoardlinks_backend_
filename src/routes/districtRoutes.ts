@@ -1,5 +1,5 @@
 import express from 'express'
-import { createDistrict, getAllDistricts, getDistrictsById, updateDistrict } from '##/controllers/districtControllers.js'
+import { createDistrict, getAllDistricts, getDistrictsById, updateDistrict } from '../controllers/districtControllers.js'
 
 const router = express.Router()
 

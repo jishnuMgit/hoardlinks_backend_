@@ -1,6 +1,6 @@
 import express from 'express'
-import { createAgency,  getAgenciesUnderDistrict,  getAgenciesUnderState,  GetagencymemberbyId,  getAllAgencies, updateAgency } from '##/controllers/agencyControllers.js'
-import { verifyToken } from '##/middlewares/verifyToken.js'
+import { createAgency,  getAgenciesUnderDistrict,  getAgenciesUnderState,  GetagencymemberbyId,  getAllAgencies, updateAgency } from '../controllers/agencyControllers.js'
+import { verifyToken } from '../middlewares/verifyToken.js'
 
 const router = express.Router()
 

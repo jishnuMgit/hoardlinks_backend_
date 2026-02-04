@@ -1,4 +1,4 @@
-import { CheckToken } from '##/controllers/tokenValidController.js'
+import { CheckToken } from '../controllers/tokenValidController.js'
 import express from 'express'
 
 const router = express.Router()

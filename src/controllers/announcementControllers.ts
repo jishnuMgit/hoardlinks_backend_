@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { prisma } from "#config/db.js";
-import { serialize } from "#utils/serialize.js";
+import { prisma } from "../config/db.js";
+import { serialize } from "../utils/serialize.js";
 
 export const createAnnouncement = async (
   req: Request,

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { prisma } from "#config/db.js";
-import { serialize } from "#utils/serialize.js";
+import { prisma } from "../config/db.js";
+import { serialize } from "../utils/serialize.js";
 import bcrypt from "bcrypt";
 
 export const getProfile = async (

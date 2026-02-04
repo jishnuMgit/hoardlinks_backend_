@@ -1,5 +1,5 @@
 import express from 'express'
-import { createState, getStateById, getStates, updateState } from '##/controllers/stateController.js'
+import { createState, getStateById, getStates, updateState } from '../controllers/stateController.js'
 
 const router = express.Router()
 

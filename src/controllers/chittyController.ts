@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { prisma } from "#config/db.js";
-import { serialize } from "#utils/serialize.js";
+import { prisma } from "../config/db.js";
+import { serialize } from "../utils/serialize.js";
 // import { run } from "node:test";
 import { chitty_member_join_status } from "@prisma/client";
 

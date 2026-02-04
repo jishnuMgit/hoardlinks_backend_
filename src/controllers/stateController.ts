@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import { prisma } from "#config/db.js";
+import { prisma } from "../config/db.js";
 import createError from "http-errors";
-import { serialize } from "#utils/serialize.js";
+import { serialize } from "../utils/serialize.js";
 
 export const createState = async (
   req: Request,
